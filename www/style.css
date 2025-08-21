@@ -1,0 +1,5 @@
+ /* selectInput */
+.selectize-dropdown.selectize-dropdown-content {
+  max-height: 100px;
+  overflow-y: auto;
+}
