@@ -2,25 +2,35 @@ meta:
   name: ELO Rating
   link: https://github.com/loprtq/ELORating
 
+logo:
+  small: www/logo-sml.png
+  
 color:
   palette:
     black: "#1A1A1A"
-    white: "#F9F9F9"
-    orange: "#FF6F20"
-    pink: "#FF3D7F"
-  foreground: black
-  background: white
-  primary: orange
-  danger: pink
+    snow-white: "#FFFFFF"
+    true-blue: "#001965"
+    sea-blue: "#005AD2"
+    light-blue: "#3B97DE"
+    lava-red: "#E6553F"
+    golden-yellow: "#EAAB00"
+    forest-green: "#3F9C35"
+  foreground: true-blue
+  background: snow-white
+  primary: light-blue
+  secondary: sea-blue
+  tertiary: light-blue
+  danger: lava-red
+  warning: golden-yellow
+  success: forest-green
 
 typography:
   fonts:
-    - family: Open Sans
-      source: google
-    - family: Rubik
+    - family: Inter
       source: google
 
-  base: Open Sans
+  base: Inter
   headings:
-    family: Rubik
+    family: Inter
     weight: 400
+  

@@ -15,12 +15,14 @@ library(dplyr)
 library(elo)
 
 # Helper functions
-source(list.files(path = "funcs", full.names = TRUE))
+invisible(
+  sapply(list.files(path = "funcs", full.names = TRUE), source)
+)
 
 # Initial files
 data.frame("Player" = NA, "Rating" = NA) %>%
   data_crt(filepath = "player_data.rds")
-data.frame("Player1" = NA, "Score1" = NA, "Player2" = NA, "Score2" = NA) %>%
+data.frame("Time" = Sys.time(), "Player1" = NA, "Score1" = NA, "Player2" = NA, "Score2" = NA) %>%
   data_crt(filepath = "match_data.rds")
 
 
@@ -29,9 +31,9 @@ data.frame("Player1" = NA, "Score1" = NA, "Player2" = NA, "Score2" = NA) %>%
 ## *****************************************************************************
 ui <- bslib::page_navbar(
   title = "ELO Rating",
-  id = "nav_tabs",
   theme = bslib::bs_theme(),
   shiny::includeCSS("www/style.css"),
+  id = "nav_tabs",
   
   # Match data
   # * Register matches
@@ -40,7 +42,7 @@ ui <- bslib::page_navbar(
     title = "Matches",
     value = "matches_tab",
     bslib::card(
-      bslib::card_header("Register match"),
+      bslib::card_header(htmltools::h3("Register match")),
       bslib::layout_columns(
         col_widths = c(5, 2, 5),
         htmltools::div(
@@ -53,17 +55,18 @@ ui <- bslib::page_navbar(
             label = NULL,
             inputId = "player1",
             choices = NULL,
-            width = "90%"
+            width = "95%"
           ),
           shiny::selectInput(
             label = NULL,
             inputId = "player1score",
-            choices = 0:10,
-            width = "15%"
+            choices = posscore,
+            width = "20%"
           )
         ),
         htmltools::div(
           class = "d-flex flex-column align-items-center",
+          br(),
           htmltools::h1("VS")
         ),
         htmltools::div(
@@ -76,13 +79,13 @@ ui <- bslib::page_navbar(
             label = NULL,
             inputId = "player2",
             choices = NULL,
-            width = "90%"
+            width = "95%"
           ),
           shiny::selectInput(
             label = NULL,
             inputId = "player2score",
-            choices = 0:10,
-            width = "15%"
+            choices = posscore,
+            width = "20%"
           )
         )
       ),
@@ -94,10 +97,11 @@ ui <- bslib::page_navbar(
           style = "min-width: 150px; max-width: 250px;"
         )
       ),
-      max_height = "300px"
+      min_height = "300px",
+      max_height = "350px"
     ),
     bslib::card(
-      bslib::card_header("Match history"),
+      bslib::card_header(htmltools::h3("Match history")),
       bslib::card_body(
         shiny::tableOutput(outputId = "match_table")
       )
@@ -111,12 +115,16 @@ ui <- bslib::page_navbar(
     title = "Players",
     value = "players_tab",
     bslib::card(
-      bslib::card_header("Register player"),
+      bslib::card_header(htmltools::h3("Register player")),
       bslib::card_body(
-        shiny::textInput(
-          inputId = "playerregister",
-          label = NULL,
-          placeholder = "Name"
+        htmltools::div(
+          style = "display: flex; justify-content: center;",
+          shiny::textInput(
+            inputId = "playerregister",
+            label = NULL,
+            placeholder = "Name",
+            width = "75%"
+          )
         ),
         htmltools::div(
           style = "display: flex; justify-content: center;",
@@ -127,33 +135,28 @@ ui <- bslib::page_navbar(
           )
         )
       ),
-      max_height = "300px"
+      min_height = "175px",
+      max_height = "225px"
     ),
     bslib::card(
-      bslib::card_header("Player ratings"),
+      bslib::card_header(htmltools::h3("Player ratings")),
       bslib::card_body(
         shiny::tableOutput(outputId = "player_table")
       )
     )
   ),
   
-  # Guide
-  bslib::nav_panel(
-    title = "Guide",
-    value = "guide_tab",
-    bslib::card(
-      bslib::card_header("Guide"),
-      bslib::card_body()
-    )
-  ),
   
   # Filter button
   bslib::nav_spacer(),
   bslib::nav_item(
-    shiny::actionButton(
-      inputId = "filter_btn",
-      label = "Filter",
-      icon = icon("filter")
+    htmltools::div(
+      style = "display: flex; justify-content: center;",
+      shiny::actionButton(
+        inputId = "filter_btn",
+        label = "Filter",
+        icon = icon("filter")
+      )
     )
   )
 )
@@ -204,7 +207,7 @@ server <- function(input, output, session) {
     data <- player_data() %>%
       dplyr::add_row(
         Player = input$playerregister,
-        Rating = 1000
+        Rating = startELO
       ) %>%
       tidyr::drop_na()
     data %>%
@@ -235,7 +238,16 @@ server <- function(input, output, session) {
   
   # Show player data
   output$player_table <- shiny::renderTable(
-    player_data()
+    player_data() %>%
+      dplyr::filter(
+        if (is.null(input$filter)) {
+          TRUE
+        } else {
+          grepl(tolower(input$filter), tolower(Player)) | grepl(input$filter, Rating)
+        }
+      ) %>%
+      dplyr::rename(Name = Player) %>%
+      dplyr::arrange(-Rating)
   )
 
 
@@ -262,6 +274,7 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$player1, {
     # Required inputs
     shiny::req(input$player1)
+    shiny::req(input$player1 != input$player2)
     
     # Reset inputs
     output$player1ELO <- renderText({
@@ -293,6 +306,7 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$player2, {
     # Required inputs
     shiny::req(input$player2)
+    shiny::req(input$player1 != input$player2)
     
     # Reset inputs
     output$player2ELO <- renderText({
@@ -310,10 +324,13 @@ server <- function(input, output, session) {
     shiny::req(input$player1score)
     shiny::req(input$player2)
     shiny::req(input$player2score)
+    shiny::req(input$player1 != input$player2)
+    shiny::req(input$player1score != 0 & input$player2score != 0)
     
     # Save data
     match_data() %>%
       dplyr::add_row(
+        Time = Sys.time(),
         Player1 = input$player1,
         Score1 = input$player1score,
         Player2 = input$player2,
@@ -350,7 +367,18 @@ server <- function(input, output, session) {
   
   # Show match data
   output$match_table <- shiny::renderTable(
-    match_data()
+    match_data() %>%
+      dplyr::filter(
+        if (is.null(input$filter)) {
+          TRUE
+        } else {
+          grepl(tolower(input$filter), tolower(Player1)) | grepl(input$filter, Score1) |
+          grepl(tolower(input$filter), tolower(Player2)) | grepl(input$filter, Score2)
+        }
+      ) %>%
+      dplyr::arrange(desc(Time)) %>%
+      dplyr::relocate(Score2, .before = Player2) %>%
+      dplyr::select(-Time)
   )
 
 
@@ -359,7 +387,17 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$filter_btn, {
     shiny::showModal(
       shiny::modalDialog(
-        title = "",
+        title = "Filter",
+        htmltools::p("Write either names, scores or the likes. The filter is reset each time the button is pressed."),
+        htmltools::div(
+          style = "display: flex; justify-content: center;",
+          shiny::textInput(
+            inputId = "filter",
+            label = NULL,
+            placeholder = "Filter text",
+            width = "75%"
+          )
+        ),
         easyClose = TRUE
       )
     )
