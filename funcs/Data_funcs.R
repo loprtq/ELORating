@@ -1,5 +1,7 @@
 ## *****************************************************************************
 ## # Data create
+## Create data sets, if they do not already exist. Helps make sure that the
+## data structure is as desired.
 ## *****************************************************************************
 data_crt <- function(data, filepath) {
   if (!file.exists(filepath)) {
